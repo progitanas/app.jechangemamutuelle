@@ -6,13 +6,13 @@ Architecture prod recommandée :
 
 - Frontend: Vercel (Next.js)
 - Backend API dédié: Cloudflare Workers
-- Base backend API: Cloudflare D1 (100% D1, plus de MySQL/Prisma)
+- Base backend API: Cloudflare D1 (100% D1, plus de moteur SQL legacy)
 
 ## Stack
 
 - Frontend: Next.js 16 (App Router), Tailwind CSS
 - Backend: API Next.js (route handlers) ou Cloudflare Worker
-- DB: Cloudflare D1 (aucun MySQL/Prisma)
+- DB: Cloudflare D1 (aucun MySQL)
 - Auth: Email/mot de passe hash bcrypt + session JWT cookie
 - Validation: Zod
 - Formulaires: React Hook Form
@@ -187,13 +187,3 @@ npm run deploy
 
 - `campaigns`
 - `lead_rejections`
-
-## Notes
-
-- Stack 100% Cloudflare D1 (aucun MySQL/Prisma)
-- Scope volontairement simple et solide
-- Architecture modulaire pour évoluer sans surcomplexité
-
----
-
-⚠️ **Prisma et MySQL ont été totalement supprimés. Toute la logique backend/API passe par Cloudflare Worker et D1.**
