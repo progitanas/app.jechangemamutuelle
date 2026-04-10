@@ -21,22 +21,35 @@ export function RegisterForm() {
 
   const onSubmit = async (values: RegisterInput) => {
     setLoading(true);
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    if (!res.ok) {
-      const data = await res.json();
-      toast.error(data.error || "Inscription impossible");
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(
+          (data as { error?: string }).error || "Inscription impossible",
+        );
+        return;
+      }
+
+      toast.success("Compte créé");
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      toast.error("Connexion backend indisponible. Réessayez dans un instant.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    toast.success("Compte créé");
-    router.push("/dashboard");
-    router.refresh();
   };
 
   return (

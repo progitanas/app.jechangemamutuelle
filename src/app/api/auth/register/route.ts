@@ -27,9 +27,16 @@ export async function POST(req: Request) {
       body: JSON.stringify(parsed.data),
     });
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erreur register";
+    const upstreamUnavailable =
+      message.includes("timeout") ||
+      message.includes("unreachable") ||
+      message.includes("configured");
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur register" },
-      { status: 400 },
+      { error: message },
+      { status: upstreamUnavailable ? 502 : 400 },
     );
   }
 
