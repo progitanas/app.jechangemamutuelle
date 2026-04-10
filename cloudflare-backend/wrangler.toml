@@ -1,0 +1,16 @@
+name = "jmm-backend"
+main = "src/index.ts"
+compatibility_date = "2026-04-10"
+workers_dev = true
+
+[vars]
+CORS_ORIGIN = "https://app.jechangemamutuelle.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jmm-prod-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Optional observability
+[observability]
+enabled = true
