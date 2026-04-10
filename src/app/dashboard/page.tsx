@@ -1,34 +1,20 @@
-﻿import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+﻿import { getCurrentUser } from "@/lib/auth";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { StatusBadge } from "@/components/ui/status-badge";
-
-function statusTone(status: string) {
-  if (status === "PAID" || status === "DELIVERED") return "emerald" as const;
-  if (status === "IN_REVIEW") return "blue" as const;
-  if (status === "CANCELLED") return "red" as const;
-  return "amber" as const;
-}
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export default async function DashboardHomePage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [requestsCount, paidOrdersCount, leadsCount, latestRequests] =
-    await Promise.all([
-      prisma.request.count({ where: { userId: user.id } }),
-      prisma.order.count({
-        where: { userId: user.id, paymentStatus: "SUCCEEDED" },
-      }),
-      prisma.lead.count({
-        where: { userId: user.id, status: { in: ["AVAILABLE", "DELIVERED"] } },
-      }),
-      prisma.request.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
-    ]);
+  const payload = await cloudflareApi<{
+    campaigns: Array<Record<string, unknown>>;
+  }>(`/v1/campaigns?customerId=${encodeURIComponent(user.id)}`).catch(() => ({
+    campaigns: [],
+  }));
+
+  const requestsCount = payload.campaigns.length;
+  const paidOrdersCount = 0;
+  const leadsCount = 0;
 
   return (
     <div className="space-y-8">
@@ -55,36 +41,34 @@ export default async function DashboardHomePage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">
-            Dernieres demandes
+            Dernieres campagnes (D1)
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wider text-slate-500">
+                <th className="py-3 pr-4">Campagne</th>
                 <th className="py-3 pr-4">Besoin</th>
-                <th className="py-3 pr-4">Budget</th>
-                <th className="py-3 pr-4">Statut</th>
-                <th className="py-3">Date</th>
+                <th className="py-3 pr-4">Quota</th>
+                <th className="py-3">Statut</th>
               </tr>
             </thead>
             <tbody>
-              {latestRequests.map((req) => (
-                <tr key={req.id} className="border-b border-slate-100">
+              {payload.campaigns.slice(0, 5).map((req) => (
+                <tr key={String(req.id)} className="border-b border-slate-100">
                   <td className="py-3 pr-4 font-medium text-slate-700">
-                    {req.needType}
+                    {String(req.campaign_name || "-")}
                   </td>
                   <td className="py-3 pr-4 text-slate-600">
-                    {req.budget} EUR/mois
+                    {String(req.need_type || "-")}
                   </td>
-                  <td className="py-3 pr-4">
-                    <StatusBadge
-                      label={req.status}
-                      tone={statusTone(req.status)}
-                    />
+                  <td className="py-3 pr-4 text-slate-600">
+                    {Number(req.quota_consumed || 0)}/
+                    {Number(req.quota_requested || 0)}
                   </td>
                   <td className="py-3 text-slate-500">
-                    {new Date(req.createdAt).toLocaleDateString("fr-FR")}
+                    {String(req.status || "SUBMITTED")}
                   </td>
                 </tr>
               ))}
@@ -95,4 +79,3 @@ export default async function DashboardHomePage() {
     </div>
   );
 }
-

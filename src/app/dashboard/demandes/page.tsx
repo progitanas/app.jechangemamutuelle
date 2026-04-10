@@ -1,11 +1,23 @@
 ﻿import Link from "next/link";
-import { RequestStatus } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { CheckoutButton } from "@/components/ui/checkout-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { RequestDuplicateButton } from "@/components/ui/request-duplicate-button";
+import { cloudflareApi } from "@/lib/cloudflare-api";
+
+const REQUEST_STATUSES = [
+  "DRAFT",
+  "SUBMITTED",
+  "APPROVED",
+  "PAID",
+  "IN_PROGRESS",
+  "DELIVERED",
+  "SUSPENDED",
+  "COMPLETED",
+  "CANCELLED",
+] as const;
+type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 function statusTone(status: string) {
   if (status === "PAID" || status === "DELIVERED") return "emerald" as const;
@@ -25,28 +37,44 @@ export default async function RequestsPage({
   if (!user) return null;
 
   const { status, q = "" } = await searchParams;
-  const parsedStatus = Object.values(RequestStatus).includes(
-    status as RequestStatus,
-  )
+  const parsedStatus = REQUEST_STATUSES.includes(status as RequestStatus)
     ? (status as RequestStatus)
     : undefined;
 
-  const requests = await prisma.request.findMany({
-    where: {
-      userId: user.id,
-      ...(parsedStatus ? { status: parsedStatus } : {}),
-      ...(q
-        ? {
-            OR: [
-              { needType: { contains: q } },
-              { campaignName: { contains: q } },
-            ],
-          }
-        : {}),
-    },
-    include: { order: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const payload = await cloudflareApi<{
+    campaigns: Array<Record<string, unknown>>;
+  }>(`/v1/campaigns?customerId=${encodeURIComponent(user.id)}`).catch(() => ({
+    campaigns: [],
+  }));
+
+  const requests = payload.campaigns
+    .filter((req) => {
+      const statusValue = String(req.status || "SUBMITTED");
+      const needType = String(req.need_type || "");
+      const campaignName = String(req.campaign_name || "");
+
+      if (parsedStatus && statusValue !== parsedStatus) return false;
+      if (
+        q &&
+        !needType.toLowerCase().includes(q.toLowerCase()) &&
+        !campaignName.toLowerCase().includes(q.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .map((req) => ({
+      id: String(req.id),
+      campaignName: String(req.campaign_name || "Campagne"),
+      needType: String(req.need_type || ""),
+      quotaConsumed: Number(req.quota_consumed || 0),
+      quotaRequested: Number(req.quota_requested || 0),
+      budget: Number(req.budget_max || 0),
+      requestedLeads: Number(req.requested_leads || 0),
+      maxPricePerLead: Number(req.max_price_per_lead || 0),
+      status: String(req.status || "SUBMITTED"),
+      paymentStatus: "-",
+    }));
 
   return (
     <div className="space-y-6">
@@ -80,7 +108,7 @@ export default async function RequestsPage({
           className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
         >
           <option value="">Tous les statuts</option>
-          {Object.values(RequestStatus).map((currentStatus) => (
+          {REQUEST_STATUSES.map((currentStatus) => (
             <option key={currentStatus} value={currentStatus}>
               {currentStatus}
             </option>
@@ -159,18 +187,10 @@ export default async function RequestsPage({
                         tone={statusTone(req.status)}
                       />
                     </td>
-                    <td className="py-3 pr-4">
-                      {req.order?.paymentStatus || "-"}
-                    </td>
+                    <td className="py-3 pr-4">{req.paymentStatus}</td>
                     <td className="py-3">
                       <div className="flex flex-wrap gap-2">
-                        {req.order?.paymentStatus === "SUCCEEDED" ? (
-                          <span className="text-xs font-semibold text-emerald-700">
-                            Paye
-                          </span>
-                        ) : (
-                          <CheckoutButton requestId={req.id} />
-                        )}
+                        <CheckoutButton requestId={req.id} />
                         <RequestDuplicateButton requestId={req.id} />
                       </div>
                     </td>

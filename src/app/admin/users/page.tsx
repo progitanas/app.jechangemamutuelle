@@ -1,7 +1,8 @@
-﻿import { prisma } from "@/lib/prisma";
-import { EmptyState } from "@/components/dashboard/empty-state";
+﻿import { EmptyState } from "@/components/dashboard/empty-state";
 import Link from "next/link";
-import { UserRole } from "@/generated/prisma/client";
+
+const USER_ROLES = ["USER", "ADMIN"] as const;
+type UserRole = (typeof USER_ROLES)[number];
 
 export default async function AdminUsersPage({
   searchParams,
@@ -9,26 +10,18 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ q?: string; role?: string }>;
 }) {
   const { q = "", role = "" } = await searchParams;
-  const parsedRole = Object.values(UserRole).includes(role as UserRole)
+  const parsedRole = USER_ROLES.includes(role as UserRole)
     ? (role as UserRole)
     : undefined;
 
-  const users = await prisma.user.findMany({
-    where: {
-      ...(parsedRole ? { role: parsedRole } : {}),
-      ...(q
-        ? {
-            OR: [
-              { email: { contains: q } },
-              { firstName: { contains: q } },
-              { lastName: { contains: q } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const users: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    createdAt: string;
+  }> = [];
 
   return (
     <div className="space-y-5">
@@ -46,7 +39,7 @@ export default async function AdminUsersPage({
           className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
         >
           <option value="">Tous les roles</option>
-          {Object.values(UserRole).map((currentRole) => (
+          {USER_ROLES.map((currentRole) => (
             <option key={currentRole} value={currentRole}>
               {currentRole}
             </option>
@@ -100,4 +93,3 @@ export default async function AdminUsersPage({
     </div>
   );
 }
-

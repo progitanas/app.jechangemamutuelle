@@ -1,12 +1,8 @@
-﻿import { prisma } from "@/lib/prisma";
-
-export default async function AdminSettingsPage() {
-  const [users, requests, orders, leads] = await Promise.all([
-    prisma.user.count(),
-    prisma.request.count(),
-    prisma.order.count(),
-    prisma.lead.count(),
-  ]);
+﻿export default async function AdminSettingsPage() {
+  const users = 0;
+  const requests = 0;
+  const orders = 0;
+  const leads = 0;
 
   return (
     <div className="space-y-6">

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { leadRejectSchema } from "@/lib/schemas";
-
-const REJECTION_WINDOW_DAYS = 7;
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -17,55 +15,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Payload invalide" }, { status: 400 });
   }
 
-  const lead = await prisma.lead.findFirst({
-    where: {
-      id: parsed.data.leadId,
-      userId: session.userId,
-      status: { in: ["AVAILABLE", "DELIVERED"] },
-    },
-  });
+  try {
+    const response = await cloudflareApi<{ ok: boolean }>("/v1/leads/reject", {
+      method: "POST",
+      body: JSON.stringify({
+        leadId: parsed.data.leadId,
+        reason: parsed.data.reason,
+        details: parsed.data.details || null,
+        userId: session.userId,
+      }),
+    });
 
-  if (!lead) {
-    return NextResponse.json({ error: "Lead introuvable" }, { status: 404 });
-  }
-
-  if (!lead.deliveredAt) {
+    return NextResponse.json(response);
+  } catch (error) {
     return NextResponse.json(
-      { error: "Le lead doit etre livre avant rejet" },
-      { status: 400 },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erreur reject lead Cloudflare",
+      },
+      { status: 500 },
     );
   }
-
-  const deadline = new Date(lead.deliveredAt);
-  deadline.setDate(deadline.getDate() + REJECTION_WINDOW_DAYS);
-  if (new Date() > deadline) {
-    return NextResponse.json(
-      { error: "Delai de rejet depasse" },
-      { status: 400 },
-    );
-  }
-
-  const existingPending = await prisma.leadDispute.findFirst({
-    where: { leadId: lead.id, status: "PENDING_REVIEW" },
-  });
-
-  if (existingPending) {
-    return NextResponse.json(
-      { error: "Un rejet est deja en cours pour ce lead" },
-      { status: 409 },
-    );
-  }
-
-  await prisma.leadDispute.create({
-    data: {
-      leadId: lead.id,
-      requestId: lead.requestId,
-      userId: session.userId,
-      reason: parsed.data.reason,
-      details: parsed.data.details || null,
-      status: "PENDING_REVIEW",
-    },
-  });
-
-  return NextResponse.json({ ok: true });
 }

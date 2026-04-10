@@ -1,17 +1,15 @@
-﻿import { prisma } from "@/lib/prisma";
-import { PartnerCreateForm } from "@/components/forms/partner-create-form";
+﻿import { PartnerCreateForm } from "@/components/forms/partner-create-form";
 import { PartnerImportForm } from "@/components/forms/partner-import-form";
 
 export default async function AdminPartnersPage() {
-  const partners = await prisma.partner.findMany({
-    include: {
-      _count: {
-        select: { deliveries: true },
-      },
-    },
-    orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
-    take: 200,
-  });
+  const partners: Array<{
+    id: string;
+    name: string;
+    email: string;
+    city: string | null;
+    isActive: boolean;
+    _count: { deliveries: number };
+  }> = [];
 
   return (
     <div className="space-y-6">
@@ -88,4 +86,3 @@ export default async function AdminPartnersPage() {
     </div>
   );
 }
-

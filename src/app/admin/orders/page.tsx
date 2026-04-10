@@ -1,7 +1,8 @@
 ﻿import Link from "next/link";
-import { PaymentStatus } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/status-badge";
+
+const PAYMENT_STATUSES = ["PENDING", "SUCCEEDED", "FAILED"] as const;
+type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export default async function AdminOrdersPage({
   searchParams,
@@ -9,28 +10,18 @@ export default async function AdminOrdersPage({
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const { status, q = "" } = await searchParams;
-  const parsedStatus = Object.values(PaymentStatus).includes(
-    status as PaymentStatus,
-  )
+  const parsedStatus = PAYMENT_STATUSES.includes(status as PaymentStatus)
     ? (status as PaymentStatus)
     : undefined;
 
-  const orders = await prisma.order.findMany({
-    where: {
-      ...(parsedStatus ? { paymentStatus: parsedStatus } : {}),
-      ...(q
-        ? {
-            OR: [
-              { user: { email: { contains: q } } },
-              { request: { needType: { contains: q } } },
-            ],
-          }
-        : {}),
-    },
-    include: { user: true, request: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const orders: Array<{
+    id: string;
+    user: { email: string };
+    request: { needType: string };
+    amount: number;
+    paymentStatus: PaymentStatus;
+    createdAt: string;
+  }> = [];
 
   return (
     <div className="space-y-5">
@@ -48,7 +39,7 @@ export default async function AdminOrdersPage({
           className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
         >
           <option value="">Tous les paiements</option>
-          {Object.values(PaymentStatus).map((currentStatus) => (
+          {PAYMENT_STATUSES.map((currentStatus) => (
             <option key={currentStatus} value={currentStatus}>
               {currentStatus}
             </option>
@@ -108,4 +99,3 @@ export default async function AdminOrdersPage({
     </div>
   );
 }
-

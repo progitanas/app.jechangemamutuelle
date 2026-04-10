@@ -1,8 +1,6 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { cache } from "react";
-import { UserRole } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "jmm_session";
 
@@ -25,8 +23,12 @@ function getAuthSecret(allowMissingInProduction = false) {
 
 export type SessionPayload = {
   userId: string;
-  role: UserRole;
+  role: "USER" | "ADMIN";
   email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string | null;
+  city?: string | null;
 };
 
 export async function createSession(payload: SessionPayload) {
@@ -71,8 +73,12 @@ export async function getSession(): Promise<SessionPayload | null> {
     );
     return {
       userId: payload.userId as string,
-      role: payload.role as UserRole,
+      role: payload.role as "USER" | "ADMIN",
       email: payload.email as string,
+      firstName: payload.firstName as string | undefined,
+      lastName: payload.lastName as string | undefined,
+      phone: (payload.phone as string | null | undefined) ?? null,
+      city: (payload.city as string | null | undefined) ?? null,
     };
   } catch {
     return null;
@@ -83,9 +89,15 @@ export const getCurrentUser = cache(async () => {
   const session = await getSession();
   if (!session) return null;
 
-  return prisma.user.findUnique({
-    where: { id: session.userId },
-  });
+  return {
+    id: session.userId,
+    role: session.role,
+    email: session.email,
+    firstName: session.firstName || "",
+    lastName: session.lastName || "",
+    phone: session.phone || null,
+    city: session.city || null,
+  };
 });
 
 export async function requireAuth() {

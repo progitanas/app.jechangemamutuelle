@@ -1,24 +1,15 @@
-﻿import { prisma } from "@/lib/prisma";
-import { KpiCard } from "@/components/dashboard/kpi-card";
+﻿import { KpiCard } from "@/components/dashboard/kpi-card";
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export default async function AdminHomePage() {
-  const [users, requests, orders, leads, latestRequests, latestOrders] =
-    await Promise.all([
-      prisma.user.count(),
-      prisma.request.count(),
-      prisma.order.count({ where: { paymentStatus: "SUCCEEDED" } }),
-      prisma.lead.count(),
-      prisma.request.findMany({
-        include: { user: true },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
-      prisma.order.findMany({
-        include: { user: true },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
-    ]);
+  const campaigns = await cloudflareApi<{
+    campaigns: Array<Record<string, unknown>>;
+  }>("/v1/campaigns").catch(() => ({ campaigns: [] }));
+
+  const requests = campaigns.campaigns.length;
+  const users = 0;
+  const orders = 0;
+  const leads = 0;
 
   return (
     <div className="space-y-8">
@@ -42,16 +33,17 @@ export default async function AdminHomePage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-bold">Dernieres demandes</h2>
           <div className="space-y-3">
-            {latestRequests.map((request) => (
+            {campaigns.campaigns.slice(0, 5).map((request) => (
               <div
-                key={request.id}
+                key={String(request.id)}
                 className="rounded-xl border border-slate-100 p-3"
               >
                 <p className="text-sm font-semibold text-slate-800">
-                  {request.needType}
+                  {String(request.campaign_name || "-")}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {request.user.email} - {request.status}
+                  {String(request.need_type || "-")} -{" "}
+                  {String(request.status || "SUBMITTED")}
                 </p>
               </div>
             ))}
@@ -60,24 +52,11 @@ export default async function AdminHomePage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-bold">Dernieres commandes</h2>
-          <div className="space-y-3">
-            {latestOrders.map((order) => (
-              <div
-                key={order.id}
-                className="rounded-xl border border-slate-100 p-3"
-              >
-                <p className="text-sm font-semibold text-slate-800">
-                  {order.user.email}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {(order.amount / 100).toFixed(2)} EUR - {order.paymentStatus}
-                </p>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm text-slate-600">
+            Données commandes en migration D1.
+          </p>
         </div>
       </section>
     </div>
   );
 }
-

@@ -1,10 +1,15 @@
-﻿import { LeadStatus } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
-import { AdminStatusSelect } from "@/components/ui/admin-status-select";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { LeadSendForm } from "@/components/ui/lead-send-form";
-import { DisputeReviewActions } from "@/components/ui/dispute-review-actions";
-import Link from "next/link";
+﻿import Link from "next/link";
+
+const LEAD_STATUSES = [
+  "NEW",
+  "AVAILABLE",
+  "DELIVERED",
+  "REJECTED",
+  "DUPLICATE",
+  "UNREACHABLE",
+  "QUALIFIED",
+] as const;
+type LeadStatus = (typeof LEAD_STATUSES)[number];
 
 export default async function AdminLeadsPage({
   searchParams,
@@ -12,53 +17,11 @@ export default async function AdminLeadsPage({
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const { status, q = "" } = await searchParams;
-  const parsedStatus = Object.values(LeadStatus).includes(status as LeadStatus)
+  const parsedStatus = LEAD_STATUSES.includes(status as LeadStatus)
     ? (status as LeadStatus)
     : undefined;
 
-  const leads = await prisma.lead.findMany({
-    where: {
-      ...(parsedStatus ? { status: parsedStatus } : {}),
-      ...(q
-        ? {
-            OR: [
-              { title: { contains: q } },
-              { contactEmail: { contains: q } },
-              { user: { email: { contains: q } } },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      user: true,
-      request: true,
-      deliveries: {
-        include: { partner: true },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
-  const partners = await prisma.partner.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true },
-    take: 200,
-  });
-
-  const pendingDisputes = await prisma.leadDispute.findMany({
-    where: { status: "PENDING_REVIEW" },
-    include: {
-      user: true,
-      lead: true,
-      request: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
+  const leads: Array<{ id: string; title: string; contactEmail: string }> = [];
 
   return (
     <div className="space-y-5">
@@ -76,7 +39,7 @@ export default async function AdminLeadsPage({
           className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
         >
           <option value="">Tous les statuts</option>
-          {Object.values(LeadStatus).map((s) => (
+          {LEAD_STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -109,35 +72,12 @@ export default async function AdminLeadsPage({
               {leads.map((lead) => (
                 <tr key={lead.id} className="border-b border-slate-100">
                   <td className="py-3 pr-4">{lead.title}</td>
-                  <td className="py-3 pr-4">{lead.user.email}</td>
+                  <td className="py-3 pr-4">-</td>
                   <td className="py-3 pr-4">{lead.contactEmail}</td>
-                  <td className="py-3 pr-4">
-                    <StatusBadge
-                      label={lead.status}
-                      tone={
-                        lead.status === "DELIVERED"
-                          ? "emerald"
-                          : lead.status === "AVAILABLE"
-                            ? "blue"
-                            : "amber"
-                      }
-                    />
-                  </td>
-                  <td className="py-3 pr-4 text-xs text-slate-600">
-                    {lead.deliveries[0]
-                      ? `${lead.deliveries[0].partner.name} (${lead.deliveries[0].channel})`
-                      : "Aucun envoi"}
-                  </td>
+                  <td className="py-3 pr-4">{parsedStatus || "-"}</td>
+                  <td className="py-3 pr-4 text-xs text-slate-600">-</td>
                   <td className="py-3">
-                    <div className="flex flex-col gap-2">
-                      <AdminStatusSelect
-                        id={lead.id}
-                        value={lead.status}
-                        endpoint="/api/admin/lead-status"
-                        options={Object.values(LeadStatus)}
-                      />
-                      <LeadSendForm leadId={lead.id} partners={partners} />
-                    </div>
+                    <span className="text-xs text-slate-500">Migration D1</span>
                   </td>
                 </tr>
               ))}
@@ -147,42 +87,10 @@ export default async function AdminLeadsPage({
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">
-            Litiges en attente
-          </h2>
-          <span className="text-xs text-slate-500">
-            {pendingDisputes.length} a traiter
-          </span>
-        </div>
-
-        {pendingDisputes.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucun litige en attente.</p>
-        ) : (
-          <div className="space-y-3">
-            {pendingDisputes.map((dispute) => (
-              <article
-                key={dispute.id}
-                className="rounded-xl border border-slate-200 p-4"
-              >
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {dispute.lead.title} - {dispute.user.email}
-                  </p>
-                  <StatusBadge label={dispute.status} tone="amber" />
-                </div>
-                <p className="text-xs text-slate-600">
-                  Motif: {dispute.reason}
-                  {dispute.details ? ` | ${dispute.details}` : ""}
-                </p>
-                <p className="mb-3 text-xs text-slate-500">
-                  Campagne: {dispute.request.campaignName}
-                </p>
-                <DisputeReviewActions disputeId={dispute.id} />
-              </article>
-            ))}
-          </div>
-        )}
+        <p className="text-sm text-slate-600">
+          Les modules leads avancés (envoi, litiges, remplacements) sont en
+          migration complète vers D1.
+        </p>
       </div>
     </div>
   );

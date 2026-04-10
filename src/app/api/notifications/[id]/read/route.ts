@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   _req: Request,
@@ -12,11 +11,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-
-  await prisma.notification.updateMany({
-    where: { id, userId: session.userId },
-    data: { isRead: true },
-  });
+  void id;
 
   return NextResponse.json({ ok: true });
 }

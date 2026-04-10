@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
-import { LeadStatus } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
+
+const LEAD_STATUSES = [
+  "NEW",
+  "AVAILABLE",
+  "DELIVERED",
+  "REJECTED",
+  "DUPLICATE",
+  "UNREACHABLE",
+  "QUALIFIED",
+] as const;
 
 export async function PATCH(req: Request) {
   try {
@@ -11,17 +19,14 @@ export async function PATCH(req: Request) {
   }
 
   const { id, status } = await req.json();
-  if (!id || !Object.values(LeadStatus).includes(status)) {
+  if (!id || !LEAD_STATUSES.includes(status)) {
     return NextResponse.json({ error: "Payload invalide" }, { status: 400 });
   }
 
-  await prisma.lead.update({
-    where: { id },
-    data: {
-      status,
-      deliveredAt: status === "DELIVERED" ? new Date() : null,
-    },
-  });
-
-  return NextResponse.json({ ok: true });
+  void id;
+  void status;
+  return NextResponse.json(
+    { error: "Mise a jour lead en migration D1" },
+    { status: 501 },
+  );
 }

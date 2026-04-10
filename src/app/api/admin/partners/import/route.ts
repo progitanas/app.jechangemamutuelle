@@ -1,5 +1,4 @@
 ﻿import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { partnerImportSchema } from "@/lib/schemas";
 
@@ -54,27 +53,11 @@ export async function POST(req: Request) {
     );
   }
 
-  let imported = 0;
-  for (const row of rows) {
-    await prisma.partner.upsert({
-      where: { email: row.email },
-      update: {
-        name: row.name,
-        phone: row.phone || null,
-        city: row.city || null,
-        isActive: true,
-      },
-      create: {
-        name: row.name,
-        email: row.email,
-        phone: row.phone || null,
-        city: row.city || null,
-        isActive: true,
-      },
-    });
-    imported += 1;
-  }
-
-  return NextResponse.json({ imported });
+  return NextResponse.json(
+    {
+      error: "Import partenaires en migration D1",
+      parsedRows: rows.length,
+    },
+    { status: 501 },
+  );
 }
-

@@ -1,19 +1,18 @@
 ﻿# JechangeMaMutuelle
 
-Application SaaS full stack (Next.js App Router + Prisma + MySQL + Stripe) pour gérer des demandes mutuelle, paiements en ligne, leads clients et administration.
+Application SaaS full stack (Next.js App Router + Stripe + Cloudflare D1) pour gérer des demandes mutuelle, paiements en ligne, leads clients et administration.
 
-Une architecture prod Vercel + Cloudflare est aussi fournie dans ce repo:
+Architecture prod recommandée :
 
 - Frontend: Vercel (Next.js)
 - Backend API dédié: Cloudflare Workers
-- Base backend API: Cloudflare D1
+- Base backend API: Cloudflare D1 (100% D1, plus de MySQL/Prisma)
 
 ## Stack
 
 - Frontend: Next.js 16 (App Router), Tailwind CSS
-- Backend: Route handlers Next.js (API)
-- DB: MySQL
-- ORM: Prisma
+- Backend: API Next.js (route handlers) ou Cloudflare Worker
+- DB: Cloudflare D1 (aucun MySQL/Prisma)
 - Auth: Email/mot de passe hash bcrypt + session JWT cookie
 - Validation: Zod
 - Formulaires: React Hook Form
@@ -56,37 +55,33 @@ Une architecture prod Vercel + Cloudflare est aussi fournie dans ce repo:
 - src/app/api/admin/partners/import: import en masse
 - src/app/api/admin/lead-send: envoi lead vers partenaire
 - src/components: forms, shell, cards, badges
-- src/lib: auth, prisma, stripe, schemas
-- prisma/schema.prisma: modèles et enums
-- prisma/seed.ts: bootstrap admin optionnel
+- src/lib: auth, cloudflare-api, stripe, schemas
+- cloudflare-backend/src: API Worker
+- cloudflare-backend/migrations: migrations D1
 
-## Installation
+## Installation (Cloudflare D1)
 
-Important: execute all commands from the app folder `jechangemamutuelle`.
+Important : exécute toutes les commandes depuis le dossier `jechangemamutuelle`.
 
 1. Installer les dépendances
 
+```bash
 npm install
+```
 
-2. Configurer les variables
+2. Configurer les variables d’environnement
 
-Copier .env.example en .env puis adapter les valeurs.
+Copier `.env.example` en `.env` puis adapter les valeurs.
 
-3. Migrer la base
+3. Préparer la base D1 (Cloudflare)
 
-npm run prisma:migrate
-npm run prisma:generate
+Voir section "Backend (Cloudflare Worker + D1)" ci-dessous pour la création/migration de la base.
 
-4. Bootstrap admin (optionnel)
+4. Lancer en local
 
-npm run prisma:seed
-
-Si `ADMIN_EMAIL` et `ADMIN_PASSWORD` sont définis, un compte admin est créé.
-Sinon, aucun compte n'est pré-créé et le premier compte inscrit devient admin.
-
-5. Lancer en local
-
+```bash
 npm run dev
+```
 
 ## Workflow B2B leads
 
@@ -99,10 +94,7 @@ Le système enregistre une livraison, passe le lead en `DELIVERED` et met à jou
 
 ## Prérequis base de données
 
-- MySQL doit être démarré sur `localhost:3306` avec les identifiants de `.env`.
-- Si Docker est installé, vous pouvez lancer:
-
-docker compose up -d
+- Cloudflare D1 est utilisé comme base de données unique (aucun MySQL requis).
 
 ## Stripe local
 
@@ -113,11 +105,22 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 3. Copier le secret whsec... dans STRIPE_WEBHOOK_SECRET
 
-## Deployment Vercel
+## Déploiement Vercel
 
-- Définir variables d'environnement (.env.example)
-- Branch push puis import projet sur Vercel
-- Configurer DB MySQL et secrets Stripe
+- Définir les variables d’environnement (.env.example)
+- Pousser la branche puis importer le projet sur Vercel
+- Configurer les variables Stripe et API (voir ci-dessous)
+
+Variables Vercel minimales recommandées:
+
+- `AUTH_SECRET`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_API_BASE_URL`
+- `API_BEARER_TOKEN`
+- `AUTOMATION_SECRET`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_WEBHOOK_SECRET`
 
 ## Architecture 100% prod recommandée
 
@@ -125,7 +128,7 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 Déployer le dossier racine `jechangemamutuelle` sur Vercel.
 
-Variables minimales Vercel:
+Variables minimales Vercel :
 
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_API_BASE_URL` (URL du Worker Cloudflare, ex: `https://jmm-backend.<subdomain>.workers.dev`)
@@ -136,7 +139,7 @@ Variables minimales Vercel:
 
 Le backend Cloudflare est dans `cloudflare-backend/`.
 
-Commandes:
+Commandes :
 
 ```bash
 cd cloudflare-backend
@@ -146,19 +149,19 @@ npx wrangler d1 create jmm-prod-db
 
 Reporter le `database_id` dans `cloudflare-backend/wrangler.toml`.
 
-Appliquer la migration D1:
+Appliquer la migration D1 :
 
 ```bash
 npx wrangler d1 migrations apply jmm-prod-db --remote
 ```
 
-Définir les secrets backend:
+Définir les secrets backend :
 
 ```bash
 npx wrangler secret put API_TOKEN
 ```
 
-Déployer le Worker:
+Déployer le Worker :
 
 ```bash
 npm run deploy
@@ -187,5 +190,10 @@ npm run deploy
 
 ## Notes
 
+- Stack 100% Cloudflare D1 (aucun MySQL/Prisma)
 - Scope volontairement simple et solide
 - Architecture modulaire pour évoluer sans surcomplexité
+
+---
+
+⚠️ **Prisma et MySQL ont été totalement supprimés. Toute la logique backend/API passe par Cloudflare Worker et D1.**

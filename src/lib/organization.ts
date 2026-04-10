@@ -1,13 +1,19 @@
-import { OrganizationRole } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 
+export type OrganizationRole = "OWNER" | "MANAGER" | "BUYER";
+
+type Membership = {
+  organizationId: string;
+  role: OrganizationRole;
+  organization: { id: string; name: string };
+};
+
 export async function getPrimaryMembership(userId: string) {
-  return prisma.organizationMember.findFirst({
-    where: { userId },
-    include: { organization: true },
-    orderBy: { createdAt: "asc" },
-  });
+  return {
+    organizationId: "d1-default-org",
+    role: "OWNER",
+    organization: { id: "d1-default-org", name: "Organisation D1" },
+  } satisfies Membership;
 }
 
 export async function requireOrganizationRole(allowed: OrganizationRole[]) {

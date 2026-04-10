@@ -1,8 +1,7 @@
 ﻿import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/auth";
 import { loginSchema } from "@/lib/schemas";
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -12,29 +11,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Données invalides" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
+  let response: {
+    user: {
+      id: string;
+      email: string;
+      role: "USER" | "ADMIN";
+      firstName: string;
+      lastName: string;
+      phone?: string | null;
+      city?: string | null;
+    };
+  };
+
+  try {
+    response = await cloudflareApi("/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify(parsed.data),
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Identifiants invalides" },
+      { status: 401 },
+    );
+  }
+
+  await createSession({
+    userId: response.user.id,
+    role: response.user.role,
+    email: response.user.email,
+    firstName: response.user.firstName,
+    lastName: response.user.lastName,
+    phone: response.user.phone || null,
+    city: response.user.city || null,
   });
-  if (!user) {
-    return NextResponse.json(
-      { error: "Identifiants invalides" },
-      { status: 401 },
-    );
-  }
-
-  const match = await bcrypt.compare(parsed.data.password, user.passwordHash);
-  if (!match) {
-    return NextResponse.json(
-      { error: "Identifiants invalides" },
-      { status: 401 },
-    );
-  }
-
-  await createSession({ userId: user.id, role: user.role, email: user.email });
 
   return NextResponse.json({
     ok: true,
-    redirectTo: user.role === "ADMIN" ? "/admin" : "/dashboard",
+    redirectTo: response.user.role === "ADMIN" ? "/admin" : "/dashboard",
   });
 }
-

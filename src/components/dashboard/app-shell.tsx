@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { UserRole } from "@/generated/prisma/client";
 import { Crosshair, LogOut } from "lucide-react";
+
+type UserRole = "USER" | "ADMIN";
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 

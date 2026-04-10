@@ -1,8 +1,20 @@
-﻿import { RequestStatus } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
-import { AdminStatusSelect } from "@/components/ui/admin-status-select";
+﻿import { AdminStatusSelect } from "@/components/ui/admin-status-select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import Link from "next/link";
+import { cloudflareApi } from "@/lib/cloudflare-api";
+
+const REQUEST_STATUSES = [
+  "DRAFT",
+  "SUBMITTED",
+  "APPROVED",
+  "PAID",
+  "IN_PROGRESS",
+  "DELIVERED",
+  "SUSPENDED",
+  "COMPLETED",
+  "CANCELLED",
+] as const;
+type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 export default async function AdminRequestsPage({
   searchParams,
@@ -10,29 +22,33 @@ export default async function AdminRequestsPage({
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
   const { status, q = "" } = await searchParams;
-  const parsedStatus = Object.values(RequestStatus).includes(
-    status as RequestStatus,
-  )
+  const parsedStatus = REQUEST_STATUSES.includes(status as RequestStatus)
     ? (status as RequestStatus)
     : undefined;
 
-  const requests = await prisma.request.findMany({
-    where: {
-      ...(parsedStatus ? { status: parsedStatus } : {}),
-      ...(q
-        ? {
-            OR: [
-              { needType: { contains: q } },
-              { campaignName: { contains: q } },
-              { user: { email: { contains: q } } },
-            ],
-          }
-        : {}),
-    },
-    include: { user: true, order: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const payload = await cloudflareApi<{
+    campaigns: Array<Record<string, unknown>>;
+  }>("/v1/campaigns").catch(() => ({ campaigns: [] }));
+
+  const requests = payload.campaigns
+    .filter((r) => {
+      const statusValue = String(r.status || "SUBMITTED");
+      const searchCorpus =
+        `${String(r.need_type || "")} ${String(r.campaign_name || "")}`.toLowerCase();
+      if (parsedStatus && statusValue !== parsedStatus) return false;
+      if (q && !searchCorpus.includes(q.toLowerCase())) return false;
+      return true;
+    })
+    .map((r) => ({
+      id: String(r.id),
+      user: { email: String(r.customer_id || "-") },
+      campaignName: String(r.campaign_name || "-"),
+      needType: String(r.need_type || "-"),
+      quotaConsumed: Number(r.quota_consumed || 0),
+      quotaRequested: Number(r.quota_requested || 0),
+      status: String(r.status || "SUBMITTED"),
+      order: null,
+    }));
 
   return (
     <div className="space-y-5">
@@ -50,7 +66,7 @@ export default async function AdminRequestsPage({
           className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
         >
           <option value="">Tous les statuts</option>
-          {Object.values(RequestStatus).map((s) => (
+          {REQUEST_STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -107,15 +123,13 @@ export default async function AdminRequestsPage({
                       }
                     />
                   </td>
-                  <td className="py-3 pr-4">
-                    {request.order?.paymentStatus || "-"}
-                  </td>
+                  <td className="py-3 pr-4">-</td>
                   <td className="py-3">
                     <AdminStatusSelect
                       id={request.id}
                       value={request.status}
                       endpoint="/api/admin/request-status"
-                      options={Object.values(RequestStatus)}
+                      options={[...REQUEST_STATUSES]}
                     />
                   </td>
                 </tr>

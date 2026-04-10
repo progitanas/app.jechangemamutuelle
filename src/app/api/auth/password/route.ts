@@ -1,8 +1,7 @@
 ﻿import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { passwordChangeSchema } from "@/lib/schemas";
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export async function PATCH(req: Request) {
   const session = await getSession();
@@ -16,37 +15,21 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Données invalides" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { passwordHash: true },
-  });
-
-  if (!user) {
+  try {
+    await cloudflareApi("/v1/auth/password", {
+      method: "PATCH",
+      body: JSON.stringify({
+        email: session.email,
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+      }),
+    });
+  } catch (error) {
     return NextResponse.json(
-      { error: "Utilisateur introuvable" },
-      { status: 404 },
-    );
-  }
-
-  const matches = await bcrypt.compare(
-    parsed.data.currentPassword,
-    user.passwordHash,
-  );
-
-  if (!matches) {
-    return NextResponse.json(
-      { error: "Mot de passe actuel incorrect" },
+      { error: error instanceof Error ? error.message : "Erreur mot de passe" },
       { status: 400 },
     );
   }
 
-  const newPasswordHash = await bcrypt.hash(parsed.data.newPassword, 12);
-
-  await prisma.user.update({
-    where: { id: session.userId },
-    data: { passwordHash: newPasswordHash },
-  });
-
   return NextResponse.json({ ok: true });
 }
-

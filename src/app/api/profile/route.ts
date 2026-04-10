@@ -1,7 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { profileSchema } from "@/lib/schemas";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export async function PATCH(req: Request) {
   const session = await getSession();
@@ -15,16 +15,20 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Données invalides" }, { status: 400 });
   }
 
-  await prisma.user.update({
-    where: { id: session.userId },
-    data: {
-      firstName: parsed.data.firstName,
-      lastName: parsed.data.lastName,
-      phone: parsed.data.phone || null,
-      city: parsed.data.city || null,
-    },
-  });
+  try {
+    await cloudflareApi("/v1/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify({
+        email: session.email,
+        ...parsed.data,
+      }),
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Mise a jour impossible" },
+      { status: 400 },
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }
-
