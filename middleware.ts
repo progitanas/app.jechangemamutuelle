@@ -6,19 +6,22 @@ const PUBLIC_ROUTES = ["/", "/login", "/register"];
 function getAuthSecret() {
   const authSecret = process.env.AUTH_SECRET;
   if (!authSecret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("AUTH_SECRET must be defined in production");
-    }
-
+    if (process.env.NODE_ENV === "production") return null;
     return "dev_secret_change_me";
   }
 
   return authSecret;
 }
 
-const secret = new TextEncoder().encode(getAuthSecret());
-
 export async function middleware(req: NextRequest) {
+  const authSecret = getAuthSecret();
+  if (!authSecret) {
+    const { pathname } = req.nextUrl;
+    if (PUBLIC_ROUTES.includes(pathname)) return NextResponse.next();
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  const secret = new TextEncoder().encode(authSecret);
   const { pathname } = req.nextUrl;
 
   if (
