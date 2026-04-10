@@ -15,14 +15,23 @@ function getAuthSecret() {
 
 export async function middleware(req: NextRequest) {
   const authSecret = getAuthSecret();
+  const { pathname } = req.nextUrl;
+
+  // Some browser extensions post to page URLs (/login, /register).
+  // Swallow these unsupported requests to avoid noisy 405 errors.
+  if (
+    req.method === "POST" &&
+    (pathname === "/login" || pathname === "/register")
+  ) {
+    return new NextResponse(null, { status: 204 });
+  }
+
   if (!authSecret) {
-    const { pathname } = req.nextUrl;
     if (PUBLIC_ROUTES.includes(pathname)) return NextResponse.next();
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
   const secret = new TextEncoder().encode(authSecret);
-  const { pathname } = req.nextUrl;
 
   if (
     pathname.startsWith("/_next") ||
