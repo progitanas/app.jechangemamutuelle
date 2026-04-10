@@ -6,11 +6,15 @@ import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "jmm_session";
 
-function getAuthSecret() {
+function getAuthSecret(allowMissingInProduction = false) {
   const authSecret = process.env.AUTH_SECRET;
   if (!authSecret) {
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !allowMissingInProduction) {
       throw new Error("AUTH_SECRET must be defined in production");
+    }
+
+    if (process.env.NODE_ENV === "production") {
+      return null;
     }
 
     return "dev_secret_change_me";
@@ -19,8 +23,6 @@ function getAuthSecret() {
   return authSecret;
 }
 
-const secret = new TextEncoder().encode(getAuthSecret());
-
 export type SessionPayload = {
   userId: string;
   role: UserRole;
@@ -28,11 +30,16 @@ export type SessionPayload = {
 };
 
 export async function createSession(payload: SessionPayload) {
+  const signingSecret = getAuthSecret(false);
+  if (!signingSecret) {
+    throw new Error("AUTH_SECRET must be defined in production");
+  }
+
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(secret);
+    .sign(new TextEncoder().encode(signingSecret));
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -50,12 +57,18 @@ export async function clearSession() {
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
+  const authSecret = getAuthSecret(true);
+  if (!authSecret) return null;
+
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(authSecret),
+    );
     return {
       userId: payload.userId as string,
       role: payload.role as UserRole,
