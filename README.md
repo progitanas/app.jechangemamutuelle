@@ -122,6 +122,22 @@ Variables Vercel minimales recommandées:
 - `STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 
+### Clés/valeurs exactes à mettre (Vercel)
+
+Dans Vercel > Project Settings > Environment Variables, ajoute:
+
+- `AUTH_SECRET` = chaîne aléatoire longue (ex: 64+ caractères)
+- `NEXT_PUBLIC_APP_URL` = `https://app.jechangemamutuelle.com`
+- `NEXT_PUBLIC_API_BASE_URL` = URL de ton Worker Cloudflare (ex: `https://jmm-backend.<ton-subdomain>.workers.dev`)
+- `API_BEARER_TOKEN` = exactement la même valeur que le secret `API_TOKEN` côté Cloudflare Worker
+- `CLOUDFLARE_API_TIMEOUT_MS` = `12000`
+- `AUTOMATION_SECRET` = secret aléatoire (si endpoint automation utilisé)
+- `STRIPE_SECRET_KEY` = ta clé Stripe serveur (`sk_live_...` en prod)
+- `STRIPE_PUBLISHABLE_KEY` = ta clé Stripe publique (`pk_live_...` en prod)
+- `STRIPE_WEBHOOK_SECRET` = secret webhook Stripe (`whsec_...`)
+
+Important: `NEXT_PUBLIC_API_BASE_URL` ne doit jamais pointer vers `localhost` en production.
+
 ## Architecture 100% prod recommandée
 
 ### 1. Frontend (Vercel)
@@ -160,6 +176,11 @@ Définir les secrets backend :
 ```bash
 npx wrangler secret put API_TOKEN
 ```
+
+Valeur à saisir pour `API_TOKEN`:
+
+- utilise une chaîne aléatoire forte (32+ caractères)
+- copie exactement cette même valeur dans `API_BEARER_TOKEN` sur Vercel
 
 Déployer le Worker :
 
