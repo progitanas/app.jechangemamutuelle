@@ -3,6 +3,7 @@
 Application SaaS full stack (Next.js App Router + Prisma + MySQL + Stripe) pour gérer des demandes mutuelle, paiements en ligne, leads clients et administration.
 
 Une architecture prod Vercel + Cloudflare est aussi fournie dans ce repo:
+
 - Frontend: Vercel (Next.js)
 - Backend API dédié: Cloudflare Workers
 - Base backend API: Cloudflare D1
@@ -125,6 +126,7 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 Déployer le dossier racine `jechangemamutuelle` sur Vercel.
 
 Variables minimales Vercel:
+
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_API_BASE_URL` (URL du Worker Cloudflare, ex: `https://jmm-backend.<subdomain>.workers.dev`)
 - `API_BEARER_TOKEN` (si tu sécurises les appels vers Worker)
@@ -170,6 +172,7 @@ npm run deploy
 ## Backend Cloudflare livré
 
 `cloudflare-backend/src/index.ts` expose:
+
 - `GET /health`
 - `POST /v1/campaigns`
 - `GET /v1/campaigns/:id`
@@ -178,6 +181,7 @@ npm run deploy
 - `PATCH /v1/leads/reject/:id/review`
 
 `cloudflare-backend/migrations/0001_init.sql` crée:
+
 - `campaigns`
 - `lead_rejections`
 

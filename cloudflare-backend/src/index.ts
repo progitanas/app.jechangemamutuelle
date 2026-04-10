@@ -80,14 +80,21 @@ app.post("/v1/campaigns", async (c) => {
   const payload = await c.req.json();
   const parsed = createCampaignSchema.safeParse(payload);
   if (!parsed.success) {
-    return c.json({ error: "Invalid payload", details: parsed.error.flatten() }, 400);
+    return c.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      400,
+    );
   }
 
   const id = crypto.randomUUID();
-  const estimatedCost = parsed.data.requestedLeads * parsed.data.maxPricePerLead;
+  const estimatedCost =
+    parsed.data.requestedLeads * parsed.data.maxPricePerLead;
   const feasibilityScore = Math.max(
     20,
-    Math.min(98, Math.round((parsed.data.budgetMax / Math.max(1, estimatedCost)) * 100)),
+    Math.min(
+      98,
+      Math.round((parsed.data.budgetMax / Math.max(1, estimatedCost)) * 100),
+    ),
   );
 
   await c.env.DB.prepare(
@@ -95,7 +102,7 @@ app.post("/v1/campaigns", async (c) => {
       id, customer_id, campaign_name, need_type, requested_leads,
       geo_area, target_segment, quality_level, is_exclusive,
       budget_max, max_price_per_lead, quota_requested, estimated_cost, feasibility_score
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -134,19 +141,20 @@ app.get("/v1/campaigns/:id", async (c) => {
 app.patch("/v1/campaigns/:id/quota", async (c) => {
   const id = c.req.param("id");
   const payload = await c.req.json().catch(() => ({}));
-  const increment = typeof payload.increment === "number" ? payload.increment : 1;
+  const increment =
+    typeof payload.increment === "number" ? payload.increment : 1;
 
   await c.env.DB.prepare(
     `UPDATE campaigns
      SET quota_consumed = quota_consumed + ?,
          updated_at = CURRENT_TIMESTAMP
-     WHERE id = ?`
+     WHERE id = ?`,
   )
     .bind(increment, id)
     .run();
 
   const row = await c.env.DB.prepare(
-    "SELECT quota_requested, quota_consumed FROM campaigns WHERE id = ?"
+    "SELECT quota_requested, quota_consumed FROM campaigns WHERE id = ?",
   )
     .bind(id)
     .first<{ quota_requested: number; quota_consumed: number }>();
@@ -167,14 +175,17 @@ app.post("/v1/leads/reject", async (c) => {
   const payload = await c.req.json();
   const parsed = rejectLeadSchema.safeParse(payload);
   if (!parsed.success) {
-    return c.json({ error: "Invalid payload", details: parsed.error.flatten() }, 400);
+    return c.json(
+      { error: "Invalid payload", details: parsed.error.flatten() },
+      400,
+    );
   }
 
   const id = crypto.randomUUID();
 
   await c.env.DB.prepare(
     `INSERT INTO lead_rejections (id, campaign_id, lead_external_id, reason, details)
-     VALUES (?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -203,7 +214,7 @@ app.patch("/v1/leads/reject/:id/review", async (c) => {
   await c.env.DB.prepare(
     `UPDATE lead_rejections
      SET status = ?, replacement_external_id = ?, resolved_at = CURRENT_TIMESTAMP
-     WHERE id = ?`
+     WHERE id = ?`,
   )
     .bind(
       decision === "ACCEPT" ? "ACCEPTED" : "REJECTED",

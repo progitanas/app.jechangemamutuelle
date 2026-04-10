@@ -8,7 +8,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { membership, user } = await requireOrganizationRole(["OWNER", "MANAGER"]);
+    const { membership, user } = await requireOrganizationRole([
+      "OWNER",
+      "MANAGER",
+    ]);
     const { id } = await params;
 
     const request = await prisma.request.findFirst({
@@ -19,7 +22,10 @@ export async function PATCH(
     });
 
     if (!request) {
-      return NextResponse.json({ error: "Campagne introuvable" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Campagne introuvable" },
+        { status: 404 },
+      );
     }
 
     const updated = await prisma.request.update({

@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { RequestStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { createNotification, notifyOrganizationMembers } from "@/lib/notifications";
+import {
+  createNotification,
+  notifyOrganizationMembers,
+} from "@/lib/notifications";
 
 export async function PATCH(req: Request) {
   let adminUserId = "";

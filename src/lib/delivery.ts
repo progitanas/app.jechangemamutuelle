@@ -44,7 +44,9 @@ export async function deliverLeadToPartner(params: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(partner.apiKey ? { Authorization: `Bearer ${partner.apiKey}` } : {}),
+        ...(partner.apiKey
+          ? { Authorization: `Bearer ${partner.apiKey}` }
+          : {}),
       },
       body: JSON.stringify(commonPayload),
     });
@@ -107,7 +109,9 @@ export async function deliverLeadToPartner(params: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(partner.apiKey ? { Authorization: `Bearer ${partner.apiKey}` } : {}),
+        ...(partner.apiKey
+          ? { Authorization: `Bearer ${partner.apiKey}` }
+          : {}),
       },
       body: JSON.stringify({
         type: "crm_sync",

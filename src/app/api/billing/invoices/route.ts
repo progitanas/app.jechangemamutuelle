@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOrganizationRole, getPrimaryMembership } from "@/lib/organization";
+import {
+  requireOrganizationRole,
+  getPrimaryMembership,
+} from "@/lib/organization";
 
 export async function GET() {
   try {
-    const { membership } = await requireOrganizationRole(["OWNER", "MANAGER", "BUYER"]);
+    const { membership } = await requireOrganizationRole([
+      "OWNER",
+      "MANAGER",
+      "BUYER",
+    ]);
     const invoices = await prisma.invoice.findMany({
       where: { organizationId: membership.organizationId },
       include: { items: true },
@@ -23,7 +30,10 @@ export async function POST() {
     const { user } = await requireOrganizationRole(["OWNER", "MANAGER"]);
     const membership = await getPrimaryMembership(user.id);
     if (!membership) {
-      return NextResponse.json({ error: "Aucune organisation" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Aucune organisation" },
+        { status: 400 },
+      );
     }
 
     const now = new Date();
@@ -85,7 +95,11 @@ export async function POST() {
       data: { totalAmount: total },
     });
 
-    return NextResponse.json({ ok: true, invoiceId: invoice.id, totalAmount: total });
+    return NextResponse.json({
+      ok: true,
+      invoiceId: invoice.id,
+      totalAmount: total,
+    });
   } catch {
     return NextResponse.json({ error: "Interdit" }, { status: 403 });
   }

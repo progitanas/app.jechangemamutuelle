@@ -10,9 +10,7 @@ export async function getPrimaryMembership(userId: string) {
   });
 }
 
-export async function requireOrganizationRole(
-  allowed: OrganizationRole[],
-) {
+export async function requireOrganizationRole(allowed: OrganizationRole[]) {
   const user = await requireAuth();
   const membership = await getPrimaryMembership(user.id);
 

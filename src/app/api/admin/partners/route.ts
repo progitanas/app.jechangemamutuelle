@@ -49,4 +49,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ partner: created }, { status: 201 });
 }
-

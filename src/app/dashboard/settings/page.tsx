@@ -63,7 +63,8 @@ export default async function DashboardSettingsPage() {
             ) : (
               invoices.map((invoice) => (
                 <li key={invoice.id}>
-                  {invoice.periodMonth}/{invoice.periodYear} - {invoice.totalAmount} EUR ({invoice.status})
+                  {invoice.periodMonth}/{invoice.periodYear} -{" "}
+                  {invoice.totalAmount} EUR ({invoice.status})
                 </li>
               ))
             )}
@@ -75,4 +76,3 @@ export default async function DashboardSettingsPage() {
     </div>
   );
 }
-
