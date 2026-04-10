@@ -28,10 +28,16 @@ export async function POST(req: Request) {
       method: "POST",
       body: JSON.stringify(parsed.data),
     });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erreur login";
+    const upstreamUnavailable =
+      message.includes("timeout") ||
+      message.includes("unreachable") ||
+      message.includes("configured");
+
     return NextResponse.json(
-      { error: "Identifiants invalides" },
-      { status: 401 },
+      { error: message },
+      { status: upstreamUnavailable ? 502 : 401 },
     );
   }
 
