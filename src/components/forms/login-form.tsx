@@ -40,7 +40,13 @@ export function LoginForm() {
         return;
       }
 
-      const data = await res.json();
+      const data = (await res.json().catch(() => ({}))) as {
+        redirectTo?: string;
+      };
+      if (!data.redirectTo) {
+        toast.error("Réponse login invalide. Réessayez.");
+        return;
+      }
       toast.success("Connexion reussie");
       router.push(data.redirectTo);
       router.refresh();
