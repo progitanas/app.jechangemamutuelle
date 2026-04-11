@@ -86,7 +86,7 @@ function normalizeEmail(email: string) {
 const app = new Hono<Env>();
 
 app.use("*", async (c, next) => {
-  const publicPaths = ["/health"];
+  const publicPaths = ["/health", "/v1/auth/register", "/v1/auth/login"];
   if (publicPaths.includes(c.req.path)) {
     await next();
     return;

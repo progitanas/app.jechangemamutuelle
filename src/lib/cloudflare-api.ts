@@ -36,9 +36,9 @@ export async function cloudflareApi<T>(
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(
-      (data as { error?: string }).error || "Cloudflare API error",
-    );
+    const upstreamMessage =
+      (data as { error?: string }).error || "Cloudflare API error";
+    throw new Error(`[${response.status}] ${upstreamMessage}`);
   }
 
   return data as T;

@@ -28,24 +28,48 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur register";
+    const statusMatch = message.match(/^\[(\d{3})\]\s*(.*)$/);
+    const upstreamStatus = statusMatch ? Number(statusMatch[1]) : null;
+    const cleanMessage = statusMatch?.[2] || message;
     const upstreamUnavailable =
       message.includes("timeout") ||
       message.includes("unreachable") ||
       message.includes("configured");
+    const unauthorized =
+      upstreamStatus === 401 || cleanMessage.toLowerCase().includes("unauthorized");
+    const conflict = upstreamStatus === 409;
 
     return NextResponse.json(
-      { error: message },
-      { status: upstreamUnavailable ? 502 : 400 },
+      { error: cleanMessage },
+      {
+        status: upstreamUnavailable
+          ? 502
+          : unauthorized
+            ? 401
+            : conflict
+              ? 409
+              : upstreamStatus && upstreamStatus >= 500
+                ? 502
+                : 400,
+      },
     );
   }
 
-  await createSession({
-    userId: response.user.id,
-    role: response.user.role,
-    email: response.user.email,
-    firstName: response.user.firstName,
-    lastName: response.user.lastName,
-  });
+  try {
+    await createSession({
+      userId: response.user.id,
+      role: response.user.role,
+      email: response.user.email,
+      firstName: response.user.firstName,
+      lastName: response.user.lastName,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message.includes("AUTH_SECRET")
+        ? "AUTH_SECRET non configuré en production"
+        : "Erreur session";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
