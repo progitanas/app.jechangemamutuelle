@@ -34,16 +34,27 @@ export function LoginForm() {
 
       clearTimeout(timeoutId);
 
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        toast.error(
+          "API login mal configurée en production (réponse non JSON).",
+        );
+        return;
+      }
+
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error((data as { error?: string }).error || "Connexion impossible");
+        toast.error(
+          (data as { error?: string }).error || "Connexion impossible",
+        );
         return;
       }
 
       const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
         redirectTo?: string;
       };
-      if (!data.redirectTo) {
+      if (!data.ok || !data.redirectTo) {
         toast.error("Réponse login invalide. Réessayez.");
         return;
       }
@@ -101,4 +112,3 @@ export function LoginForm() {
     </form>
   );
 }
-

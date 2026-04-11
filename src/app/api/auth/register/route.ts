@@ -27,8 +27,7 @@ export async function POST(req: Request) {
       body: JSON.stringify(parsed.data),
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Erreur register";
+    const message = error instanceof Error ? error.message : "Erreur register";
     const upstreamUnavailable =
       message.includes("timeout") ||
       message.includes("unreachable") ||

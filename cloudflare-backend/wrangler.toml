@@ -4,7 +4,7 @@ compatibility_date = "2026-04-10"
 workers_dev = true
 
 [vars]
-CORS_ORIGIN = "https://app.jechangemamutuelle.com"
+CORS_ORIGIN = "https://app.jechangemamutuelle.online"
 
 [[d1_databases]]
 binding = "DB"

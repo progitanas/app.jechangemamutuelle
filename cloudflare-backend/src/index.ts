@@ -42,17 +42,17 @@ const rejectLeadSchema = z.object({
 const registerSchema = z.object({
   firstName: z.string().min(2),
   lastName: z.string().min(2),
-  email: z.email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
 });
 
 const loginSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
 });
 
 const profileSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().toLowerCase().email(),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
   phone: z.string().optional(),
@@ -60,7 +60,7 @@ const profileSchema = z.object({
 });
 
 const passwordChangeSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().toLowerCase().email(),
   currentPassword: z.string().min(8),
   newPassword: z.string().min(10),
 });
@@ -77,6 +77,10 @@ function asIsoFuture(days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString();
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
 }
 
 const app = new Hono<Env>();
@@ -126,10 +130,12 @@ app.post("/v1/auth/register", async (c) => {
     );
   }
 
+  const email = normalizeEmail(parsed.data.email);
+
   const existing = await c.env.DB.prepare(
     "SELECT id FROM users WHERE email = ?",
   )
-    .bind(parsed.data.email)
+    .bind(email)
     .first<{ id: string }>();
 
   if (existing) {
@@ -152,7 +158,7 @@ app.post("/v1/auth/register", async (c) => {
       id,
       parsed.data.firstName,
       parsed.data.lastName,
-      parsed.data.email,
+      email,
       passwordHash,
       role,
     ),
@@ -165,7 +171,7 @@ app.post("/v1/auth/register", async (c) => {
     ok: true,
     user: {
       id,
-      email: parsed.data.email,
+      email,
       role,
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
@@ -184,10 +190,12 @@ app.post("/v1/auth/login", async (c) => {
     );
   }
 
+  const email = normalizeEmail(parsed.data.email);
+
   const user = await c.env.DB.prepare(
     "SELECT id, first_name, last_name, email, role, password_hash FROM users WHERE email = ?",
   )
-    .bind(parsed.data.email)
+    .bind(email)
     .first<{
       id: string;
       first_name: string;
@@ -282,6 +290,8 @@ app.patch("/v1/auth/profile", async (c) => {
     return c.json({ error: "Invalid payload" }, 400);
   }
 
+  const email = normalizeEmail(parsed.data.email);
+
   await c.env.DB.prepare(
     `UPDATE users
      SET first_name = ?, last_name = ?, phone = ?, city = ?, updated_at = CURRENT_TIMESTAMP
@@ -292,7 +302,7 @@ app.patch("/v1/auth/profile", async (c) => {
       parsed.data.lastName,
       parsed.data.phone || null,
       parsed.data.city || null,
-      parsed.data.email,
+      email,
     )
     .run();
 
@@ -307,10 +317,12 @@ app.patch("/v1/auth/password", async (c) => {
     return c.json({ error: "Invalid payload" }, 400);
   }
 
+  const email = normalizeEmail(parsed.data.email);
+
   const user = await c.env.DB.prepare(
     "SELECT id, password_hash FROM users WHERE email = ?",
   )
-    .bind(parsed.data.email)
+    .bind(email)
     .first<{ id: string; password_hash: string }>();
 
   if (!user) {
