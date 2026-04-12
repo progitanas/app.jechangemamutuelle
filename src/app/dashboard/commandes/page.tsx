@@ -21,8 +21,8 @@ export default async function OrdersPage({}: {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">
-          Module commandes en migration D1. Les paiements seront synchronises
-          via Cloudflare dans la prochaine passe.
+          Module commandes en cours de finalisation. Les paiements seront
+          synchronises dans la prochaine passe.
         </p>
         <div className="mt-4">
           <Link
@@ -36,7 +36,7 @@ export default async function OrdersPage({}: {
 
       <EmptyState
         title="Aucune commande disponible"
-        description="La source de données MySQL est désactivée en faveur de D1."
+        description="Les donnees commandes seront disponibles apres synchronisation."
       />
     </div>
   );

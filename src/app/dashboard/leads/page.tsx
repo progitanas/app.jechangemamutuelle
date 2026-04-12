@@ -19,8 +19,8 @@ export default async function LeadsPage({}: {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">
-          Module leads en migration D1. Les leads seront lisibles ici dès que
-          les endpoints Cloudflare leads seront activés.
+          Module leads en cours de finalisation. Les leads seront lisibles ici
+          dès que les endpoints seront activés.
         </p>
         <div className="mt-4">
           <Link
@@ -34,7 +34,7 @@ export default async function LeadsPage({}: {
 
       <EmptyState
         title="Aucun lead disponible"
-        description="La source MySQL a été retirée; D1 est en cours de synchronisation."
+        description="Les donnees leads sont en cours de synchronisation."
       />
     </div>
   );

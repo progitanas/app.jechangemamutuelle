@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(
-    { error: "Creation partenaire en migration D1" },
+    { error: "Creation partenaire temporairement indisponible" },
     { status: 501 },
   );
 }

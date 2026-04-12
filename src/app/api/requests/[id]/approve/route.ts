@@ -9,7 +9,10 @@ export async function PATCH(
     await requireOrganizationRole(["OWNER", "MANAGER"]);
     const { id } = await params;
     return NextResponse.json(
-      { error: "Approbation campagne en migration D1", requestId: id },
+      {
+        error: "Approbation campagne temporairement indisponible",
+        requestId: id,
+      },
       { status: 501 },
     );
   } catch {

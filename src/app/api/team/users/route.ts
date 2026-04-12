@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        error: "Gestion d'equipe en migration D1",
+        error: "Gestion d'equipe en cours de finalisation",
         email: parsed.data.email,
         role: parsed.data.role,
       },

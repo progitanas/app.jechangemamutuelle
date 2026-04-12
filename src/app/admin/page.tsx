@@ -53,7 +53,7 @@ export default async function AdminHomePage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-bold">Dernieres commandes</h2>
           <p className="text-sm text-slate-600">
-            Données commandes en migration D1.
+            Donnees commandes en cours de finalisation.
           </p>
         </div>
       </section>

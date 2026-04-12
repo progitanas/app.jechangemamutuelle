@@ -15,7 +15,10 @@ export function CheckoutButton({ requestId }: { requestId: string }) {
     });
 
     if (!res.ok) {
-      toast.error("Impossible de lancer le paiement");
+      const data = await res
+        .json()
+        .catch(() => ({ error: "Impossible de lancer le paiement" }));
+      toast.error(data.error || "Impossible de lancer le paiement");
       setLoading(false);
       return;
     }
@@ -36,8 +39,7 @@ export function CheckoutButton({ requestId }: { requestId: string }) {
       disabled={loading}
       className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
     >
-      {loading ? "Ouverture..." : "Payér"}
+      {loading ? "Ouverture..." : "Payer"}
     </button>
   );
 }
-

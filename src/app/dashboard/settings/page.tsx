@@ -1,4 +1,5 @@
 ﻿import { PasswordForm } from "@/components/forms/password-form";
+import { EmailVerificationCard } from "@/components/ui/email-verification-card";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function DashboardSettingsPage() {
@@ -18,7 +19,7 @@ export default async function DashboardSettingsPage() {
         <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900">Notifications</h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
-            <li>Les notifications D1 seront affichées ici.</li>
+            <li>Vos notifications seront affichées ici.</li>
           </ul>
         </article>
 
@@ -27,10 +28,12 @@ export default async function DashboardSettingsPage() {
             Facturation consolidée
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
-            <li>Les factures D1 seront affichées ici.</li>
+            <li>Vos factures seront affichées ici.</li>
           </ul>
         </article>
       </section>
+
+      <EmailVerificationCard />
 
       <PasswordForm />
     </div>

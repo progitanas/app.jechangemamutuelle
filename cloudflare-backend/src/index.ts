@@ -24,6 +24,20 @@ const createCampaignSchema = z.object({
   quotaRequested: z.number().int().min(1),
 });
 
+const campaignStatusSchema = z.object({
+  status: z.enum([
+    "DRAFT",
+    "SUBMITTED",
+    "APPROVED",
+    "PAID",
+    "IN_PROGRESS",
+    "DELIVERED",
+    "SUSPENDED",
+    "COMPLETED",
+    "CANCELLED",
+  ]),
+});
+
 const rejectLeadSchema = z.object({
   campaignId: z.string().min(3),
   leadExternalId: z.string().min(3),
@@ -65,12 +79,37 @@ const passwordChangeSchema = z.object({
   newPassword: z.string().min(10),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(20),
+  newPassword: z.string().min(10),
+});
+
+const verifyRequestSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+const verifyConfirmSchema = z.object({
+  token: z.string().min(20),
+});
+
 async function hashPassword(input: string) {
   const bytes = new TextEncoder().encode(input);
   const hash = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function generateOpaqueToken() {
+  const random = crypto.getRandomValues(new Uint8Array(24));
+  const suffix = Array.from(random)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${crypto.randomUUID()}${suffix}`;
 }
 
 function asIsoFuture(days: number) {
@@ -86,7 +125,15 @@ function normalizeEmail(email: string) {
 const app = new Hono<Env>();
 
 app.use("*", async (c, next) => {
-  const publicPaths = ["/health", "/v1/auth/register", "/v1/auth/login"];
+  const publicPaths = [
+    "/health",
+    "/v1/auth/register",
+    "/v1/auth/login",
+    "/v1/auth/forgot-password",
+    "/v1/auth/reset-password",
+    "/v1/auth/verify-email/request",
+    "/v1/auth/verify-email/confirm",
+  ];
   if (publicPaths.includes(c.req.path)) {
     await next();
     return;
@@ -344,6 +391,147 @@ app.patch("/v1/auth/password", async (c) => {
   return c.json({ ok: true });
 });
 
+app.post("/v1/auth/forgot-password", async (c) => {
+  const payload = await c.req.json().catch(() => ({}));
+  const parsed = forgotPasswordSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return c.json({ error: "Invalid payload" }, 400);
+  }
+
+  const email = normalizeEmail(parsed.data.email);
+  const user = await c.env.DB.prepare("SELECT id, email FROM users WHERE email = ?")
+    .bind(email)
+    .first<{ id: string; email: string }>();
+
+  if (!user) {
+    return c.json({ ok: true });
+  }
+
+  const rawToken = generateOpaqueToken();
+  const tokenHash = await hashPassword(rawToken);
+  const tokenId = crypto.randomUUID();
+
+  await c.env.DB.prepare(
+    `INSERT INTO auth_tokens (id, token_hash, token_type, user_id, email, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(tokenId, tokenHash, "PASSWORD_RESET", user.id, user.email, asIsoFuture(1))
+    .run();
+
+  const baseUrl = c.env.CORS_ORIGIN || "";
+  const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+  return c.json({ ok: true, resetLink });
+});
+
+app.post("/v1/auth/reset-password", async (c) => {
+  const payload = await c.req.json().catch(() => ({}));
+  const parsed = resetPasswordSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return c.json({ error: "Invalid payload" }, 400);
+  }
+
+  const tokenHash = await hashPassword(parsed.data.token);
+  const row = await c.env.DB.prepare(
+    `SELECT id, user_id
+     FROM auth_tokens
+     WHERE token_hash = ?
+       AND token_type = 'PASSWORD_RESET'
+       AND consumed_at IS NULL
+       AND expires_at > ?`,
+  )
+    .bind(tokenHash, new Date().toISOString())
+    .first<{ id: string; user_id: string }>();
+
+  if (!row) {
+    return c.json({ error: "Token invalide ou expire" }, 400);
+  }
+
+  const newHash = await hashPassword(parsed.data.newPassword);
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).bind(newHash, row.user_id),
+    c.env.DB.prepare(
+      "UPDATE auth_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).bind(row.id),
+  ]);
+
+  return c.json({ ok: true });
+});
+
+app.post("/v1/auth/verify-email/request", async (c) => {
+  const payload = await c.req.json().catch(() => ({}));
+  const parsed = verifyRequestSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return c.json({ error: "Invalid payload" }, 400);
+  }
+
+  const email = normalizeEmail(parsed.data.email);
+  const user = await c.env.DB.prepare("SELECT id, email FROM users WHERE email = ?")
+    .bind(email)
+    .first<{ id: string; email: string }>();
+
+  if (!user) {
+    return c.json({ ok: true });
+  }
+
+  const rawToken = generateOpaqueToken();
+  const tokenHash = await hashPassword(rawToken);
+  const tokenId = crypto.randomUUID();
+
+  await c.env.DB.prepare(
+    `INSERT INTO auth_tokens (id, token_hash, token_type, user_id, email, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(tokenId, tokenHash, "EMAIL_VERIFY", user.id, user.email, asIsoFuture(7))
+    .run();
+
+  const baseUrl = c.env.CORS_ORIGIN || "";
+  const verifyLink = `${baseUrl}/verify-email?token=${encodeURIComponent(rawToken)}`;
+
+  return c.json({ ok: true, verifyLink });
+});
+
+app.post("/v1/auth/verify-email/confirm", async (c) => {
+  const payload = await c.req.json().catch(() => ({}));
+  const parsed = verifyConfirmSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return c.json({ error: "Invalid payload" }, 400);
+  }
+
+  const tokenHash = await hashPassword(parsed.data.token);
+  const row = await c.env.DB.prepare(
+    `SELECT id, email
+     FROM auth_tokens
+     WHERE token_hash = ?
+       AND token_type = 'EMAIL_VERIFY'
+       AND consumed_at IS NULL
+       AND expires_at > ?`,
+  )
+    .bind(tokenHash, new Date().toISOString())
+    .first<{ id: string; email: string }>();
+
+  if (!row) {
+    return c.json({ error: "Token invalide ou expire" }, 400);
+  }
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      "INSERT OR REPLACE INTO verified_emails (email, verified_at) VALUES (?, CURRENT_TIMESTAMP)",
+    ).bind(row.email),
+    c.env.DB.prepare(
+      "UPDATE auth_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).bind(row.id),
+  ]);
+
+  return c.json({ ok: true, email: row.email });
+});
+
 app.get("/v1/campaigns", async (c) => {
   const customerId = c.req.query("customerId");
   const rows = customerId
@@ -452,6 +640,40 @@ app.patch("/v1/campaigns/:id/quota", async (c) => {
     quotaConsumed: row.quota_consumed,
     quotaRemaining: Math.max(0, row.quota_requested - row.quota_consumed),
   });
+});
+
+app.patch("/v1/campaigns/:id/status", async (c) => {
+  const id = c.req.param("id");
+  const payload = await c.req.json().catch(() => ({}));
+  const parsed = campaignStatusSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    return c.json({ error: "Invalid payload" }, 400);
+  }
+
+  const updated = await c.env.DB.prepare(
+    `UPDATE campaigns
+     SET status = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+  )
+    .bind(parsed.data.status, id)
+    .run();
+
+  if (!updated.success) {
+    return c.json({ error: "Update failed" }, 500);
+  }
+
+  const row = await c.env.DB.prepare(
+    "SELECT id, status FROM campaigns WHERE id = ?",
+  )
+    .bind(id)
+    .first<{ id: string; status: string }>();
+
+  if (!row) {
+    return c.json({ error: "Campaign not found" }, 404);
+  }
+
+  return c.json({ ok: true, campaign: row });
 });
 
 app.post("/v1/leads/reject", async (c) => {

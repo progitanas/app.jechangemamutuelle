@@ -41,7 +41,7 @@ export default async function DashboardHomePage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">
-            Dernieres campagnes (D1)
+            Dernieres campagnes
           </h2>
         </div>
         <div className="overflow-x-auto">

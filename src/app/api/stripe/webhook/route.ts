@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
+import { cloudflareApi } from "@/lib/cloudflare-api";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -35,7 +36,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Signature invalide" }, { status: 400 });
   }
 
-  void event;
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const requestId = session.metadata?.requestId;
+
+    if (requestId) {
+      await cloudflareApi(
+        `/v1/campaigns/${encodeURIComponent(requestId)}/status`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: "PAID" }),
+        },
+      ).catch(() => null);
+    }
+  }
 
   return NextResponse.json({ received: true });
 }

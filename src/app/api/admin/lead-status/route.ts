@@ -26,7 +26,7 @@ export async function PATCH(req: Request) {
   void id;
   void status;
   return NextResponse.json(
-    { error: "Mise a jour lead en migration D1" },
+    { error: "Mise a jour lead temporairement indisponible" },
     { status: 501 },
   );
 }

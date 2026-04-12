@@ -28,7 +28,7 @@ export async function PATCH(req: Request) {
   void id;
   void status;
   return NextResponse.json(
-    { error: "Changement de statut en migration D1" },
+    { error: "Changement de statut temporairement indisponible" },
     { status: 501 },
   );
 }

@@ -25,7 +25,7 @@ export async function POST() {
     }
 
     return NextResponse.json({
-      error: "Facturation en migration D1",
+      error: "Facturation en cours de finalisation",
       organizationId: membership.organizationId,
     });
   } catch {

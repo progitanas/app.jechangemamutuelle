@@ -96,6 +96,11 @@ export function LoginForm() {
             {errors.password.message}
           </p>
         ) : null}
+        <p className="mt-2 text-right text-xs">
+          <Link href="/forgot-password" className="font-semibold text-emerald-600">
+            Mot de passe oublie ?
+          </Link>
+        </p>
       </div>
       <button
         disabled={loading}

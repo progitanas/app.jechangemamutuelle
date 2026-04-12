@@ -4,6 +4,7 @@ import { CheckoutButton } from "@/components/ui/checkout-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { RequestDuplicateButton } from "@/components/ui/request-duplicate-button";
+import { PaymentStatusSync } from "@/components/ui/payment-status-sync";
 import { cloudflareApi } from "@/lib/cloudflare-api";
 
 const REQUEST_STATUSES = [
@@ -31,12 +32,17 @@ function statusTone(status: string) {
 export default async function RequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    q?: string;
+    payment?: string;
+    requestId?: string;
+  }>;
 }) {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const { status, q = "" } = await searchParams;
+  const { status, q = "", payment, requestId } = await searchParams;
   const parsedStatus = REQUEST_STATUSES.includes(status as RequestStatus)
     ? (status as RequestStatus)
     : undefined;
@@ -73,7 +79,12 @@ export default async function RequestsPage({
       requestedLeads: Number(req.requested_leads || 0),
       maxPricePerLead: Number(req.max_price_per_lead || 0),
       status: String(req.status || "SUBMITTED"),
-      paymentStatus: "-",
+      paymentStatus:
+        String(req.status || "SUBMITTED") === "PAID"
+          ? "Paye"
+          : String(req.status || "SUBMITTED") === "APPROVED"
+            ? "A regler"
+            : "En attente",
     }));
 
   return (
@@ -124,6 +135,19 @@ export default async function RequestsPage({
           Réinitialiser
         </Link>
       </form>
+
+      {payment === "success" ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Paiement confirme{requestId ? ` pour la campagne ${requestId}` : ""}.
+          {requestId ? <PaymentStatusSync requestId={requestId} /> : null}
+        </div>
+      ) : null}
+
+      {payment === "cancel" ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Paiement annule. Vous pouvez relancer l'operation quand vous voulez.
+        </div>
+      ) : null}
 
       {requests.length === 0 ? (
         <EmptyState
@@ -190,7 +214,9 @@ export default async function RequestsPage({
                     <td className="py-3 pr-4">{req.paymentStatus}</td>
                     <td className="py-3">
                       <div className="flex flex-wrap gap-2">
-                        <CheckoutButton requestId={req.id} />
+                        {req.status === "APPROVED" ? (
+                          <CheckoutButton requestId={req.id} />
+                        ) : null}
                         <RequestDuplicateButton requestId={req.id} />
                       </div>
                     </td>

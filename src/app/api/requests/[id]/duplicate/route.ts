@@ -13,7 +13,7 @@ export async function POST(
   const { id } = await params;
   void id;
   return NextResponse.json(
-    { error: "Duplication campagne en migration D1" },
+    { error: "Duplication campagne temporairement indisponible" },
     { status: 501 },
   );
 }

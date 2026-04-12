@@ -77,7 +77,9 @@ export default async function AdminLeadsPage({
                   <td className="py-3 pr-4">{parsedStatus || "-"}</td>
                   <td className="py-3 pr-4 text-xs text-slate-600">-</td>
                   <td className="py-3">
-                    <span className="text-xs text-slate-500">Migration D1</span>
+                    <span className="text-xs text-slate-500">
+                      Bientot disponible
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -89,7 +91,7 @@ export default async function AdminLeadsPage({
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">
           Les modules leads avancés (envoi, litiges, remplacements) sont en
-          migration complète vers D1.
+          cours de finalisation.
         </p>
       </div>
     </div>

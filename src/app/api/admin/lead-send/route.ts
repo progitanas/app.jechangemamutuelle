@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   void parsed;
   return NextResponse.json(
-    { error: "Envoi de lead en migration D1" },
+    { error: "Envoi de lead temporairement indisponible" },
     { status: 501 },
   );
 }

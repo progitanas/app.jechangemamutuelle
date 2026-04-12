@@ -10,9 +10,9 @@ type Membership = {
 
 export async function getPrimaryMembership(userId: string) {
   return {
-    organizationId: "d1-default-org",
+    organizationId: "default-org",
     role: "OWNER",
-    organization: { id: "d1-default-org", name: "Organisation D1" },
+    organization: { id: "default-org", name: "Organisation Principale" },
   } satisfies Membership;
 }
 

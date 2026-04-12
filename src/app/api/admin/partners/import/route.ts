@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json(
     {
-      error: "Import partenaires en migration D1",
+      error: "Import partenaires temporairement indisponible",
       parsedRows: rows.length,
     },
     { status: 501 },

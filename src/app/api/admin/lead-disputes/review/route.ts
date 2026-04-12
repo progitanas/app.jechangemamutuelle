@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
 
   void parsed;
   return NextResponse.json(
-    { error: "Revue de litige en migration D1" },
+    { error: "Revue de litige temporairement indisponible" },
     { status: 501 },
   );
 }
